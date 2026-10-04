@@ -1,241 +1,992 @@
 <!DOCTYPE html>
+<!--
+  Plotline – turn raw data into charts.
+
+  Everything lives in this single file, in three parts:
+    1. <style>   colours, layout and look
+    2. <body>    page structure
+    3. <script>  parsing, chart building and interactivity
+
+  To run: double-click this file. An internet connection is needed
+  for the Chart.js library and the Google Fonts below.
+-->
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Plotline – raw data to charts</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-:root{--bg:#f4f5ff;--solid:#fff;--panel:rgba(255,255,255,.72);--ink:#14142b;--muted:#6a6a8a;--line:rgba(99,102,241,.16);--field:rgba(99,102,241,.07);--accent:#5b5bf0;--accent2:#06b6d4;--aur1:rgba(99,102,241,.24);--aur2:rgba(6,182,212,.2);--shadow:0 12px 40px -14px rgba(60,60,160,.3);--err:#dc2626;--g:linear-gradient(135deg,#5b5bf0,#0891b2);
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#09091a;--solid:#14142e;--panel:rgba(255,255,255,.05);--ink:#ecebff;--muted:#9a9abf;--line:rgba(255,255,255,.1);--field:rgba(255,255,255,.06);--accent:#8b8bff;--aur1:rgba(99,102,241,.35);--aur2:rgba(34,211,238,.18);--shadow:0 20px 60px -20px rgba(0,0,0,.7);--err:#f87171}}
-:root[data-theme="dark"]{--bg:#09091a;--solid:#14142e;--panel:rgba(255,255,255,.05);--ink:#ecebff;--muted:#9a9abf;--line:rgba(255,255,255,.1);--field:rgba(255,255,255,.06);--accent:#8b8bff;--aur1:rgba(99,102,241,.35);--aur2:rgba(34,211,238,.18);--shadow:0 20px 60px -20px rgba(0,0,0,.7);--err:#f87171}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-*,*::before,*::after{box-sizing:border-box}
-[hidden]{display:none!important}
-body{margin:0;color:var(--ink);font:15px/1.55 "DM Sans",system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(900px 520px at 8% -8%,var(--aur1),transparent 70%),radial-gradient(800px 480px at 100% 0%,var(--aur2),transparent 70%),var(--bg);background-attachment:fixed;min-height:100vh}
-header{display:flex;align-items:center;gap:20px;padding:44px clamp(16px,4vw,48px) 12px;flex-wrap:wrap}
-.logo{width:68px;height:68px;border-radius:20px;background:var(--g);display:grid;place-items:center;box-shadow:0 14px 34px -10px #5b5bf0}
-h1{font:800 clamp(40px,7vw,76px)/.95 Sora,"DM Sans",sans-serif;letter-spacing:-.04em;margin:0;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:6px}
-header p{margin:10px 0 0;color:var(--muted);max-width:52ch;font-size:16px}
-main{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:20px;padding:20px clamp(16px,4vw,48px) 56px;align-items:start}
-@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}header{padding-top:28px}.logo{width:52px;height:52px;border-radius:16px}}
-section{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px;min-width:0;box-shadow:var(--shadow);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
-h2{font:700 16px Sora,"DM Sans",sans-serif;margin:0 0 14px;display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
-h2::before{content:"";width:6px;height:18px;border-radius:4px;background:var(--g)}
-label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:16px 0 6px}
-textarea,select,input[type=text],input[type=number]{width:100%;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;transition:border-color .15s,box-shadow .15s}
-textarea:focus,select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--field);outline:none}
-select{color-scheme:light dark}
-textarea{min-height:150px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
-button:focus-visible,.btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
-.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
-button,.btn{background:var(--g);color:#fff;border:0;border-radius:12px;padding:11px 18px;font:600 14px/1 "DM Sans",sans-serif;cursor:pointer;box-shadow:0 10px 24px -10px #5b5bf0;transition:transform .12s,box-shadow .12s}
-button:hover,.btn:hover{transform:translateY(-1px)}
-button.ghost,.btn.ghost{background:var(--field);color:var(--ink);border:1px solid var(--line);box-shadow:none}
-.btn input{display:none}
-.row select{padding:10px 12px;border-radius:12px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.seg{display:flex;flex-wrap:wrap;gap:4px;background:var(--field);border:1px solid var(--line);border-radius:14px;padding:4px}
-.seg button{background:transparent;color:var(--muted);box-shadow:none;padding:8px 12px;border-radius:10px;font-size:13px;flex:1 1 auto}
-.seg button:hover{transform:none;color:var(--ink)}
-.seg button.on{background:var(--g);color:#fff;box-shadow:0 6px 16px -6px #5b5bf0}
-.checks{display:flex;flex-wrap:wrap;gap:8px}
-.checks label{display:inline-flex;align-items:center;gap:8px;margin:0;padding:6px 14px;border:1px solid var(--line);border-radius:99px;color:var(--ink);cursor:pointer;font-size:13px;background:var(--field)}
-.checks label:has(input:checked){border-color:var(--accent);background:var(--solid)}
-.checks input{accent-color:var(--accent)}
-#msg{margin-top:12px;font-size:13px;min-height:18px;color:var(--muted)}
-#msg.err{color:var(--err)}
-.chartbox{position:relative;height:min(64vh,480px);min-height:320px}
-.stats,.tablewrap{overflow-x:auto}
-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
-th,td{padding:9px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
-th{font-weight:600;color:var(--muted);position:sticky;top:0;background:var(--solid);font-size:12px}
-tr:nth-child(even) td{background:var(--field)}
-td.n{font-variant-numeric:tabular-nums}
-.stack{display:grid;gap:20px;min-width:0}
-.empty{display:grid;place-items:center;height:100%;color:var(--muted);text-align:center;border:2px dashed var(--line);border-radius:16px;padding:20px}
-.tablewrap{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:14px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Plotline – raw data to charts</title>
+
+  <!-- Fonts: Sora (headings) and DM Sans (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js: the library that draws the charts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+/* ==========================================================
+   Plotline – style.css
+
+   Sections:
+     1. Colour tokens (light + dark)
+     2. Base / page
+     3. Header
+     4. Layout and cards
+     5. Form controls
+     6. Buttons
+     7. Chart type picker and column pills
+     8. Chart area, tables and helpers
+   ========================================================== */
+
+
+/* ---------- 1. Colour tokens ----------
+   Change a colour here and it updates everywhere.
+   Light is the default; dark applies when the device is in dark mode. */
+:root {
+  --bg:      #f4f5ff;                  /* page background */
+  --solid:   #ffffff;                  /* opaque surface (table headers, chart borders) */
+  --panel:   rgba(255,255,255,.72);    /* frosted card background */
+  --ink:     #14142b;                  /* main text */
+  --muted:   #6a6a8a;                  /* secondary text */
+  --line:    rgba(99,102,241,.16);     /* borders and chart grid lines */
+  --field:   rgba(99,102,241,.07);     /* input / pill background */
+  --accent:  #5b5bf0;                  /* focus rings, selected states */
+  --aur1:    rgba(99,102,241,.24);     /* background glow, top left */
+  --aur2:    rgba(6,182,212,.2);       /* background glow, top right */
+  --shadow:  0 12px 40px -14px rgba(60,60,160,.3);
+  --err:     #dc2626;                  /* error text */
+  --gradient: linear-gradient(135deg, #5b5bf0, #0891b2);   /* buttons, title, logo */
+
+  /* Keep content clear of phone notches and system bars */
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Dark mode, applied automatically from the device setting */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #09091a;  --solid: #14142e;  --panel: rgba(255,255,255,.05);
+    --ink: #ecebff; --muted: #9a9abf;  --line: rgba(255,255,255,.1);
+    --field: rgba(255,255,255,.06);    --accent: #8b8bff;
+    --aur1: rgba(99,102,241,.35);      --aur2: rgba(34,211,238,.18);
+    --shadow: 0 20px 60px -20px rgba(0,0,0,.7);  --err: #f87171;
+  }
+}
+
+/* Dark mode forced by adding data-theme="dark" to <html> (same values as above) */
+:root[data-theme="dark"] {
+  --bg: #09091a;  --solid: #14142e;  --panel: rgba(255,255,255,.05);
+  --ink: #ecebff; --muted: #9a9abf;  --line: rgba(255,255,255,.1);
+  --field: rgba(255,255,255,.06);    --accent: #8b8bff;
+  --aur1: rgba(99,102,241,.35);      --aur2: rgba(34,211,238,.18);
+  --shadow: 0 20px 60px -20px rgba(0,0,0,.7);  --err: #f87171;
+}
+
+
+/* ---------- 2. Base / page ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Make the HTML "hidden" attribute always win over display rules below */
+[hidden] { display: none !important; }
+
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font: 15px/1.55 "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Two soft colour glows over the base colour */
+  background:
+    radial-gradient(900px 520px at 8% -8%, var(--aur1), transparent 70%),
+    radial-gradient(800px 480px at 100% 0%, var(--aur2), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+
+/* ---------- 3. Header ---------- */
+header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 44px clamp(16px, 4vw, 48px) 12px;
+}
+
+.logo {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--gradient);
+  box-shadow: 0 14px 34px -10px #5b5bf0;
+}
+
+h1 {
+  margin: 0;
+  padding-bottom: 6px;
+  font: 800 clamp(40px, 7vw, 76px)/.95 Sora, "DM Sans", sans-serif;
+  letter-spacing: -.04em;
+  /* Gradient-filled text */
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+header p {
+  max-width: 52ch;
+  margin: 10px 0 0;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+
+/* ---------- 4. Layout and cards ---------- */
+/* Two columns on desktop: controls (left) and results (right) */
+main {
+  display: grid;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  padding: 20px clamp(16px, 4vw, 48px) 56px;
+}
+
+/* One column on tablets and phones */
+@media (max-width: 900px) {
+  main   { grid-template-columns: minmax(0, 1fr); }
+  header { padding-top: 28px; }
+  .logo  { width: 52px; height: 52px; border-radius: 16px; }
+}
+
+.stack { display: grid; gap: 20px; min-width: 0; }
+
+/* Frosted-glass card */
+section {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+/* Card heading with a small gradient bar */
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font: 700 16px Sora, "DM Sans", sans-serif;
+  letter-spacing: -.01em;
+}
+h2::before {
+  content: "";
+  width: 6px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--gradient);
+}
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.full  { grid-column: 1 / -1; }          /* span both grid columns */
+.row   { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+
+
+/* ---------- 5. Form controls ---------- */
+label {
+  display: block;
+  margin: 16px 0 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+textarea, select, input[type=text], input[type=number] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+textarea:focus, select:focus, input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--field);
+}
+
+select   { color-scheme: light dark; }
+.row select { width: auto; }
+
+textarea {
+  min-height: 150px;
+  resize: vertical;
+  font: 12.5px/1.5 ui-monospace, Menlo, Consolas, monospace;
+}
+
+#msg { min-height: 18px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+#msg.err { color: var(--err); }
+
+
+/* ---------- 6. Buttons ---------- */
+button, .btn {
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--gradient);
+  color: #fff;
+  font: 600 14px/1 "DM Sans", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -10px #5b5bf0;
+  transition: transform .12s;
+}
+button:hover, .btn:hover { transform: translateY(-1px); }
+button:focus-visible, .btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Quieter button style (used for "Open file") */
+button.ghost, .btn.ghost {
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.btn input { display: none; }            /* the real file input stays hidden */
+
+
+/* ---------- 7. Chart type picker and column pills ---------- */
+/* Segmented control: one button per chart type */
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--field);
+}
+.seg button {
+  flex: 1 1 auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  box-shadow: none;
+}
+.seg button:hover { transform: none; color: var(--ink); }
+.seg button.on    { background: var(--gradient); color: #fff; box-shadow: 0 6px 16px -6px #5b5bf0; }
+
+/* Pill-shaped checkboxes for choosing columns and options */
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--field);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.checks label:has(input:checked) { border-color: var(--accent); background: var(--solid); }
+.checks input { accent-color: var(--accent); }
+
+
+/* ---------- 8. Chart area, tables and helpers ---------- */
+.chartbox { position: relative; height: min(64vh, 480px); min-height: 320px; }
+
+/* Placeholder shown before a chart is drawn */
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 20px;
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.stats, .tablewrap { overflow-x: auto; }     /* wide tables scroll sideways inside their card */
+.tablewrap {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+th, td { padding: 9px 14px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--solid); color: var(--muted); font-size: 12px; font-weight: 600; }
+tr:nth-child(even) td { background: var(--field); }   /* zebra stripes */
+td.n { font-variant-numeric: tabular-nums; }          /* numbers line up neatly */
+
+  </style>
 </head>
 <body>
-<header>
-<div class="logo" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 36 36" fill="#fff"><rect x="4" y="19" width="7" height="13" rx="3.5" opacity=".7"/><rect x="14.5" y="10" width="7" height="22" rx="3.5"/><rect x="25" y="3" width="7" height="29" rx="3.5" opacity=".85"/></svg></div>
-<div><h1>DatainStyle</h1>
-<p>Turn raw rows into clear, beautiful charts. Paste a table or drop in a file, pick your columns, done.</p></div>
-</header>
-<main>
-<div class="stack">
-<section>
-<h2>1. Your data</h2>
-<textarea id="raw" spellcheck="false" placeholder="Paste CSV, TSV or JSON here"></textarea>
-<div class="row">
-<button id="load">Build chart</button>
-<label class="btn ghost" style="margin:0;color:var(--ink)">Open file<input type="file" id="file" accept=".csv,.tsv,.txt,.json"></label>
-<select id="sample" aria-label="Sample data" style="width:auto"><option value="">Try a sample</option><option value="sales">Monthly sales</option><option value="scores">Exam scores</option><option value="temps">City temperatures</option><option value="scatter">Height vs weight</option></select>
-</div>
-<div id="msg" role="status"></div>
-</section>
-<section id="opts" hidden>
-<h2>2. Shape the chart</h2>
-<div class="grid2">
-<div style="grid-column:1/-1"><label>Chart type</label><div class="seg" id="seg"></div><select id="type" hidden><option value="bar">Bar</option><option value="line">Line</option><option value="area">Area</option><option value="pie">Pie</option><option value="doughnut">Doughnut</option><option value="radar">Radar</option><option value="scatter">Scatter</option></select></div>
-<div style="grid-column:1/-1"><label for="xcol">X axis / labels</label><select id="xcol"></select></div>
-</div>
-<label>Values (numeric columns)</label>
-<div class="checks" id="ycols"></div>
-<div class="grid2">
-<div><label for="agg">Combine repeated X</label><select id="agg"><option value="sum">Sum</option><option value="avg">Average</option><option value="count">Count</option><option value="min">Min</option><option value="max">Max</option><option value="none">Keep every row</option></select></div>
-<div><label for="sort">Sort</label><select id="sort"><option value="none">As in data</option><option value="x">By X</option><option value="desc">Largest first</option><option value="asc">Smallest first</option></select></div>
-</div>
-<div class="grid2">
-<div><label for="top">Show first N (0 = all)</label><input type="number" id="top" min="0" value="0"></div>
-<div><label for="title">Chart title</label><input type="text" id="title" placeholder="Optional"></div>
-</div>
-<div class="checks" style="margin-top:12px"><label><input type="checkbox" id="stacked"> Stacked</label><label><input type="checkbox" id="horiz"> Horizontal bars</label><label><input type="checkbox" id="zero" checked> Start Y at zero</label></div>
-</section>
-</div>
-<div class="stack">
-<section><div class="chartbox"><div class="empty" id="ph">Your chart will appear here.<br>Load a sample to see how it works.</div><canvas id="cv" hidden></canvas></div></section>
-<section id="statsec" hidden><h2>Summary</h2><div class="stats" id="stats"></div></section>
-<section id="tabsec" hidden><h2 id="tabh">Data</h2><div class="tablewrap" id="tab"></div></section>
-</div>
-</main>
-<script>
-const $=id=>document.getElementById(id);
-const PAL=['#6366f1','#06b6d4','#f472b6','#f59e0b','#10b981','#a78bfa','#fb7185','#38bdf8','#84cc16','#f97316'];
-const SAMPLES={
-sales:"Month,Revenue,Costs,Region\nJan,12400,8200,North\nFeb,13800,8600,North\nMar,15100,9100,North\nApr,14200,9000,South\nMay,16900,9800,South\nJun,18300,10400,South\nJul,17600,10100,East\nAug,19800,11200,East\nSep,21000,11900,East\nOct,20400,11500,West\nNov,23100,12800,West\nDec,26500,14200,West",
-scores:"Subject,Class A,Class B,Class C\nMath,72,65,80\nScience,81,74,77\nEnglish,68,79,70\nHistory,75,70,66\nArt,88,84,90\nMusic,79,86,73",
-temps:"City,Jan,Jul,Rainfall_mm\nBengaluru,21,24,970\nMumbai,24,27,2400\nDelhi,14,33,790\nChennai,25,33,1400\nKolkata,20,30,1800\nShimla,5,20,1500",
-scatter:"Height_cm,Weight_kg\n150,48\n155,52\n158,55\n162,58\n165,63\n168,62\n170,68\n173,70\n176,75\n180,79\n183,84\n188,90"};
-let cols=[],rows=[],chart=null;
-const TYPES=[['bar','Bar'],['line','Line'],['area','Area'],['pie','Pie'],['doughnut','Donut'],['radar','Radar'],['scatter','Scatter']];
-$('seg').innerHTML=TYPES.map(t=>`<button type="button" data-t="${t[0]}">${t[1]}</button>`).join('');
-function syncSeg(){document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===$('type').value))}
-$('seg').onclick=e=>{const t=e.target.dataset.t;if(t){$('type').value=t;render()}};
 
-function splitLine(line,d){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];
- if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
- else if(c==='"')q=true;else if(c===d){out.push(cur);cur=''}else cur+=c}
- out.push(cur);return out.map(s=>s.trim())}
-function parse(text){
- text=text.trim();if(!text)throw new Error('Paste some data first.');
- if(text[0]==='['||text[0]==='{'){let j=JSON.parse(text);
-  if(!Array.isArray(j)){const k=Object.keys(j);
-   if(k.every(x=>Array.isArray(j[x]))){const n=Math.max(...k.map(x=>j[x].length));j=Array.from({length:n},(_,i)=>Object.fromEntries(k.map(x=>[x,j[x][i]])))}
-   else j=Object.entries(j).map(([k,v])=>typeof v==='object'?{key:k,...v}:{key:k,value:v})}
-  if(!j.length||typeof j[0]!=='object')throw new Error('JSON must be an array of objects.');
-  const h=[...new Set(j.flatMap(o=>Object.keys(o)))];
-  return {h,r:j.map(o=>h.map(k=>o[k]==null?'':String(o[k])))}}
- const lines=text.split(/\r?\n/).filter(l=>l.trim());
- const first=lines[0];const d=[',','\t',';','|'].map(c=>[c,first.split(c).length]).sort((a,b)=>b[1]-a[1])[0][0];
- const h=splitLine(first,d).map((s,i)=>s||('Column '+(i+1)));
- const r=lines.slice(1).map(l=>splitLine(l,d)).map(a=>h.map((_,i)=>a[i]??''));
- if(!r.length)throw new Error('Found headers but no data rows.');
- return {h,r}}
-const num=s=>{if(typeof s==='number')return s;const t=String(s).replace(/[,\s$€£₹%]/g,'');return t!==''&&!isNaN(t)?parseFloat(t):NaN};
+  <!-- ===== Page header: logo, title and tagline ===== -->
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="#fff">
+        <rect x="4"    y="19" width="7" height="13" rx="3.5" opacity=".7"/>
+        <rect x="14.5" y="10" width="7" height="22" rx="3.5"/>
+        <rect x="25"   y="3"  width="7" height="29" rx="3.5" opacity=".85"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Plotline</h1>
+      <p>Turn raw rows into clear, beautiful charts. Paste a table or drop in a file, pick your columns, done.</p>
+    </div>
+  </header>
 
-function load(text){
- const m=$('msg');m.className='';
- try{const {h,r}=parse(text);
-  cols=h.map((name,i)=>{const vals=r.map(x=>x[i]).filter(v=>v!=='');const nn=vals.filter(v=>!isNaN(num(v))).length;return{name,i,numeric:vals.length>0&&nn/vals.length>=.8}});
-  rows=r;
-  if(!cols.some(c=>c.numeric))throw new Error('No numeric columns found. Add at least one column of numbers.');
-  setup();m.textContent=`Loaded ${rows.length} rows and ${cols.length} columns.`;
- }catch(e){m.className='err';m.textContent='Could not read that data: '+e.message}}
+  <main>
 
-function setup(){
- $('opts').hidden=false;
- const firstText=cols.find(c=>!c.numeric)||cols[0];
- $('xcol').innerHTML=cols.map(c=>`<option value="${c.i}">${esc(c.name)}</option>`).join('');
- $('xcol').value=firstText.i;
- drawChecks();
- const sc=cols.filter(c=>c.numeric).length===2&&!cols.some(c=>!c.numeric);
- $('type').value=sc?'scatter':'bar';
- if(sc)$('xcol').value=cols[0].i,drawChecks();
- render()}
-function drawChecks(){
- const x=+$('xcol').value,prev=[...document.querySelectorAll('#ycols input:checked')].map(i=>+i.value);
- const cand=cols.filter(c=>c.numeric&&c.i!==x);
- const sel=prev.length?prev.filter(p=>cand.some(c=>c.i===p)):cand.slice(0,3).map(c=>c.i);
- $('ycols').innerHTML=cand.map(c=>`<label><input type="checkbox" value="${c.i}" ${sel.includes(c.i)?'checked':''}>${esc(c.name)}</label>`).join('')||'<span style="color:var(--muted);font-size:13px">No other numeric columns.</span>'}
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+    <!-- ===== Left column: data input and chart settings ===== -->
+    <div class="stack">
 
-function build(){
- const x=+$('xcol').value,ys=[...document.querySelectorAll('#ycols input:checked')].map(i=>+i.value);
- const type=$('type').value,agg=type==='scatter'?'none':$('agg').value;
- if(!ys.length)return null;
- let labels,series;
- if(type==='scatter'){
-  const pts=rows.map(r=>({x:num(r[x]),y:num(r[ys[0]])})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
-  return{scatter:true,pts,xn:cols[x].name,yn:cols[ys[0]].name}}
- let groups;
- if(agg==='none'){labels=rows.map(r=>r[x]);groups=rows.map((r,k)=>({k:r[x],rows:[r]}))}
- else{const mp=new Map();rows.forEach(r=>{const k=r[x];if(!mp.has(k))mp.set(k,[]);mp.get(k).push(r)});groups=[...mp].map(([k,rs])=>({k,rows:rs}))}
- const val=(g,c)=>{const v=g.rows.map(r=>num(r[c])).filter(n=>!isNaN(n));
-  if(agg==='count')return g.rows.length;if(!v.length)return null;
-  if(agg==='avg')return v.reduce((a,b)=>a+b,0)/v.length;
-  if(agg==='min')return Math.min(...v);if(agg==='max')return Math.max(...v);return v.reduce((a,b)=>a+b,0)}
- let data=groups.map(g=>({k:g.k,v:ys.map(c=>val(g,c))}));
- const s=$('sort').value;
- if(s==='x')data.sort((a,b)=>String(a.k).localeCompare(String(b.k),undefined,{numeric:true}));
- if(s==='desc')data.sort((a,b)=>(b.v[0]??-Infinity)-(a.v[0]??-Infinity));
- if(s==='asc')data.sort((a,b)=>(a.v[0]??Infinity)-(b.v[0]??Infinity));
- const n=+$('top').value;if(n>0)data=data.slice(0,n);
- return{labels:data.map(d=>d.k),series:ys.map((c,j)=>({name:cols[c].name,data:data.map(d=>d.v[j])})),xn:cols[x].name,agg}}
+      <!-- Step 1: paste, upload or pick sample data -->
+      <section>
+        <h2>1. Your data</h2>
+        <textarea id="raw" spellcheck="false" placeholder="Paste CSV, TSV or JSON here"></textarea>
 
-function render(){
- if(!cols.length)return;
- syncSeg();drawTable();
- const b=build();if(chart){chart.destroy();chart=null}
- if(!b){$('cv').hidden=true;$('ph').hidden=false;$('ph').textContent='Choose at least one numeric column.';$('statsec').hidden=true;return}
- $('cv').hidden=false;$('ph').hidden=true;
- const type=$('type').value,ink=css('--ink'),muted=css('--muted'),line=css('--line');
- Chart.defaults.color=muted;Chart.defaults.font.family='"DM Sans",system-ui,sans-serif';
- const radial=type==='pie'||type==='doughnut';
- let cfg;
- if(b.scatter){
-  cfg={type:'scatter',data:{datasets:[{label:`${b.yn} vs ${b.xn}`,data:b.pts,backgroundColor:PAL[0],pointRadius:5}]},
-   options:{scales:{x:{title:{display:true,text:b.xn},grid:{color:line}},y:{title:{display:true,text:b.yn},grid:{color:line},beginAtZero:$('zero').checked}}}}
- }else if(radial){
-  const d=b.series[0];
-  cfg={type,data:{labels:b.labels,datasets:[{label:d.name,data:d.data,backgroundColor:b.labels.map((_,i)=>PAL[i%PAL.length]),borderColor:css('--solid'),borderWidth:2}]},options:{}}
- }else{
-  const area=type==='area',st=$('stacked').checked,h=$('horiz').checked&&type==='bar';
-  cfg={type:area?'line':type,data:{labels:b.labels,datasets:b.series.map((s,i)=>({label:s.name,data:s.data,backgroundColor:PAL[i%PAL.length]+(area?'55':'dd'),borderColor:PAL[i%PAL.length],borderWidth:2,fill:area,tension:.4,pointRadius:b.labels.length>40?0:4,pointBackgroundColor:PAL[i%PAL.length],borderRadius:type==='bar'?8:0,borderSkipped:false}))},
-   options:{indexAxis:h?'y':'x',scales:type==='radar'?{r:{grid:{color:line},angleLines:{color:line},beginAtZero:true}}:
-    {x:{stacked:st,grid:{color:line},title:{display:true,text:b.xn}},y:{stacked:st,grid:{color:line},beginAtZero:$('zero').checked}}}}
- }
- cfg.options={...cfg.options,responsive:true,maintainAspectRatio:false,animation:{duration:350},
-  plugins:{title:{display:!!$('title').value,text:$('title').value,color:ink,font:{size:16,weight:'600'}},legend:{display:!b.scatter&&(radial||b.series.length>1||type==='radar'),position:'bottom',labels:{color:ink}}}};
- chart=new Chart($('cv'),cfg);
- drawStats(b)}
+        <div class="row">
+          <button id="load">Build chart</button>
 
-function drawStats(b){
- const list=b.scatter?[{name:b.yn,data:b.pts.map(p=>p.y)}]:b.series;
- const f=n=>n==null||isNaN(n)?'–':Math.abs(n)>=1000?n.toLocaleString(undefined,{maximumFractionDigits:0}):(+n.toFixed(2)).toString();
- $('stats').innerHTML='<table><tr><th>Column</th><th>Points</th><th>Total</th><th>Mean</th><th>Min</th><th>Max</th></tr>'+list.map(s=>{
-  const v=s.data.filter(n=>n!=null&&!isNaN(n)),t=v.reduce((a,c)=>a+c,0);
-  return`<tr><td>${esc(s.name)}</td><td class="n">${v.length}</td><td class="n">${f(t)}</td><td class="n">${f(v.length?t/v.length:NaN)}</td><td class="n">${f(Math.min(...v))}</td><td class="n">${f(Math.max(...v))}</td></tr>`}).join('')+'</table>';
- $('statsec').hidden=false}
-function drawTable(){
- const n=Math.min(rows.length,100);
- $('tabh').textContent=`Data (${n===rows.length?rows.length:'first '+n+' of '+rows.length} rows)`;
- $('tab').innerHTML='<table><tr>'+cols.map(c=>`<th>${esc(c.name)}</th>`).join('')+'</tr>'+rows.slice(0,n).map(r=>'<tr>'+r.map((v,i)=>`<td class="${cols[i].numeric?'n':''}">${esc(v)}</td>`).join('')+'</tr>').join('')+'</table>';
- $('tabsec').hidden=false}
+          <!-- A label wraps the hidden file input so it looks like a button -->
+          <label class="btn ghost" style="margin:0">
+            Open file
+            <input type="file" id="file" accept=".csv,.tsv,.txt,.json">
+          </label>
 
-$('load').onclick=()=>load($('raw').value);
-$('sample').onchange=e=>{const s=SAMPLES[e.target.value];if(!s)return;$('raw').value=s;load(s);
- if(e.target.value==='temps')$('type').value='bar';if(e.target.value==='scores')$('type').value='radar';render();e.target.value=''};
-$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('raw').value=r.result;load(r.result)};r.readAsText(f);e.target.value=''};
-$('xcol').onchange=()=>{drawChecks();render()};
-['type','agg','sort','top','title','stacked','horiz','zero'].forEach(id=>$(id).addEventListener('input',render));
-$('ycols').addEventListener('change',render);
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
-</script>
+          <select id="sample" aria-label="Sample data" style="width:auto">
+            <option value="">Try a sample</option>
+            <option value="sales">Monthly sales</option>
+            <option value="scores">Exam scores</option>
+            <option value="temps">City temperatures</option>
+            <option value="scatter">Height vs weight</option>
+          </select>
+        </div>
+
+        <!-- Success or error message after loading -->
+        <div id="msg" role="status"></div>
+      </section>
+
+      <!-- Step 2: chart settings (shown once data is loaded) -->
+      <section id="opts" hidden>
+        <h2>2. Shape the chart</h2>
+
+        <div class="grid2">
+          <div class="full">
+            <label>Chart type</label>
+            <!-- Buttons are created by script.js; the hidden select stores the choice -->
+            <div class="seg" id="seg"></div>
+            <select id="type" hidden>
+              <option value="bar">Bar</option>
+              <option value="line">Line</option>
+              <option value="area">Area</option>
+              <option value="pie">Pie</option>
+              <option value="doughnut">Doughnut</option>
+              <option value="radar">Radar</option>
+              <option value="scatter">Scatter</option>
+            </select>
+          </div>
+
+          <div class="full">
+            <label for="xcol">X axis / labels</label>
+            <select id="xcol"></select>
+          </div>
+        </div>
+
+        <label>Values (numeric columns)</label>
+        <div class="checks" id="ycols"></div>
+
+        <div class="grid2">
+          <div>
+            <label for="agg">Combine repeated X</label>
+            <select id="agg">
+              <option value="sum">Sum</option>
+              <option value="avg">Average</option>
+              <option value="count">Count</option>
+              <option value="min">Min</option>
+              <option value="max">Max</option>
+              <option value="none">Keep every row</option>
+            </select>
+          </div>
+          <div>
+            <label for="sort">Sort</label>
+            <select id="sort">
+              <option value="none">As in data</option>
+              <option value="x">By X</option>
+              <option value="desc">Largest first</option>
+              <option value="asc">Smallest first</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <label for="top">Show first N (0 = all)</label>
+            <input type="number" id="top" min="0" value="0">
+          </div>
+          <div>
+            <label for="title">Chart title</label>
+            <input type="text" id="title" placeholder="Optional">
+          </div>
+        </div>
+
+        <div class="checks" style="margin-top:12px">
+          <label><input type="checkbox" id="stacked"> Stacked</label>
+          <label><input type="checkbox" id="horiz"> Horizontal bars</label>
+          <label><input type="checkbox" id="zero" checked> Start Y at zero</label>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== Right column: chart, summary and data preview ===== -->
+    <div class="stack">
+
+      <section>
+        <div class="chartbox">
+          <!-- Placeholder shown until a chart exists -->
+          <div class="empty" id="ph">
+            Your chart will appear here.<br>Load a sample to see how it works.
+          </div>
+          <canvas id="cv" hidden></canvas>
+        </div>
+      </section>
+
+      <section id="statsec" hidden>
+        <h2>Summary</h2>
+        <div class="stats" id="stats"></div>
+      </section>
+
+      <section id="tabsec" hidden>
+        <h2 id="tabh">Data</h2>
+        <div class="tablewrap" id="tab"></div>
+      </section>
+    </div>
+
+  </main>
+
+  <script>
+/* ==========================================================
+   Plotline – script.js
+
+   How it works, in order:
+     1. Constants      palette, chart types, sample data
+     2. State          the loaded table and the current chart
+     3. Helpers        small utility functions
+     4. Parsing        text (CSV / TSV / JSON) -> headers + rows
+     5. Loading        read data, detect columns, set up the controls
+     6. Settings       read the current choices from the form
+     7. Data prep      group, aggregate, sort and trim the rows
+     8. Drawing        build the Chart.js config and render it
+     9. Summary/table  stats table and data preview
+    10. Events         connect buttons and inputs to the code above
+   ========================================================== */
+'use strict';
+
+
+/* ---------- 1. Constants ---------- */
+
+// Series colours, used in order (6-digit hex so we can add transparency later)
+const PALETTE = [
+  '#6366f1', '#06b6d4', '#f472b6', '#f59e0b', '#10b981',
+  '#a78bfa', '#fb7185', '#38bdf8', '#84cc16', '#f97316'
+];
+
+// [value used by Chart.js, label on the button]
+const CHART_TYPES = [
+  ['bar', 'Bar'], ['line', 'Line'], ['area', 'Area'], ['pie', 'Pie'],
+  ['doughnut', 'Donut'], ['radar', 'Radar'], ['scatter', 'Scatter']
+];
+
+// Built-in example data for the "Try a sample" menu
+const SAMPLES = {
+  sales:   'Month,Revenue,Costs,Region\nJan,12400,8200,North\nFeb,13800,8600,North\nMar,15100,9100,North\nApr,14200,9000,South\nMay,16900,9800,South\nJun,18300,10400,South\nJul,17600,10100,East\nAug,19800,11200,East\nSep,21000,11900,East\nOct,20400,11500,West\nNov,23100,12800,West\nDec,26500,14200,West',
+  scores:  'Subject,Class A,Class B,Class C\nMath,72,65,80\nScience,81,74,77\nEnglish,68,79,70\nHistory,75,70,66\nArt,88,84,90\nMusic,79,86,73',
+  temps:   'City,Jan,Jul,Rainfall_mm\nBengaluru,21,24,970\nMumbai,24,27,2400\nDelhi,14,33,790\nChennai,25,33,1400\nKolkata,20,30,1800\nShimla,5,20,1500',
+  scatter: 'Height_cm,Weight_kg\n150,48\n155,52\n158,55\n162,58\n165,63\n168,62\n170,68\n173,70\n176,75\n180,79\n183,84\n188,90'
+};
+
+// Chart type that suits each sample best (others use the default)
+const SAMPLE_CHART_TYPE = { scores: 'radar', temps: 'bar' };
+
+
+/* ---------- 2. State ---------- */
+
+let columns = [];   // [{ name, index, isNumeric }] – one entry per column
+let rows    = [];   // array of rows; each row is an array of text values
+let chart   = null; // the current Chart.js instance (so we can destroy it)
+
+
+/* ---------- 3. Helpers ---------- */
+
+// Shortcut for document.getElementById
+const $ = id => document.getElementById(id);
+
+// Make text safe to put inside HTML
+const escapeHtml = text =>
+  String(text).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Turn "1,200", "$45" or "12%" into a number. Returns NaN if it is not numeric.
+function toNumber(value) {
+  if (typeof value === 'number') return value;
+  const cleaned = String(value).replace(/[,\s$€£₹%]/g, '');
+  return cleaned !== '' && !isNaN(cleaned) ? parseFloat(cleaned) : NaN;
+}
+
+// Read a CSS variable (e.g. '--ink') so charts match the current theme
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+// Format a number for the summary table
+function formatNumber(n) {
+  if (n == null || isNaN(n)) return '–';
+  return Math.abs(n) >= 1000
+    ? n.toLocaleString(undefined, { maximumFractionDigits: 0 })
+    : String(+n.toFixed(2));
+}
+
+// Show a message under the data box (isError = true makes it red)
+function showMessage(text, isError = false) {
+  $('msg').className = isError ? 'err' : '';
+  $('msg').textContent = text;
+}
+
+
+/* ---------- 4. Parsing ---------- */
+
+// Split one CSV line into cells, respecting "quoted, values" and "" escapes
+function splitLine(line, delimiter) {
+  const cells = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (line[i + 1] === '"') { current += '"'; i++; }  // escaped quote
+        else inQuotes = false;
+      } else current += char;
+    } else if (char === '"') inQuotes = true;
+    else if (char === delimiter) { cells.push(current); current = ''; }
+    else current += char;
+  }
+  cells.push(current);
+  return cells.map(cell => cell.trim());
+}
+
+// Parse CSV / TSV / ; or | separated text. The first line is the header.
+function parseDelimited(text) {
+  const lines = text.split(/\r?\n/).filter(line => line.trim());
+
+  // Guess the delimiter: whichever splits the header line into the most parts
+  const first = lines[0];
+  const delimiter = [',', '\t', ';', '|']
+    .map(d => [d, first.split(d).length])
+    .sort((a, b) => b[1] - a[1])[0][0];
+
+  const headers = splitLine(first, delimiter).map((h, i) => h || 'Column ' + (i + 1));
+  const body = lines.slice(1)
+    .map(line => splitLine(line, delimiter))
+    .map(cells => headers.map((_, i) => cells[i] ?? ''));   // pad short rows
+
+  if (!body.length) throw new Error('Found headers but no data rows.');
+  return { headers, rows: body };
+}
+
+// Parse JSON: an array of objects, an object of arrays, or a plain object
+function parseJson(text) {
+  let data = JSON.parse(text);
+
+  if (!Array.isArray(data)) {
+    const keys = Object.keys(data);
+    if (keys.every(k => Array.isArray(data[k]))) {
+      // { "a": [1,2], "b": [3,4] }  ->  [{a:1,b:3}, {a:2,b:4}]
+      const length = Math.max(...keys.map(k => data[k].length));
+      data = Array.from({ length }, (_, i) =>
+        Object.fromEntries(keys.map(k => [k, data[k][i]])));
+    } else {
+      // { "x": 5, "y": {"n": 2} }  ->  [{key:"x",value:5}, {key:"y",n:2}]
+      data = Object.entries(data).map(([key, v]) =>
+        typeof v === 'object' ? { key, ...v } : { key, value: v });
+    }
+  }
+
+  if (!data.length || typeof data[0] !== 'object') {
+    throw new Error('JSON must be an array of objects.');
+  }
+  const headers = [...new Set(data.flatMap(obj => Object.keys(obj)))];
+  const body = data.map(obj => headers.map(h => (obj[h] == null ? '' : String(obj[h]))));
+  return { headers, rows: body };
+}
+
+// Entry point: decide whether the text is JSON or delimited text
+function parseText(text) {
+  text = text.trim();
+  if (!text) throw new Error('Paste some data first.');
+  return (text[0] === '[' || text[0] === '{') ? parseJson(text) : parseDelimited(text);
+}
+
+
+/* ---------- 5. Loading ---------- */
+
+// Parse the text, work out which columns are numeric, then set up the controls
+function loadData(text) {
+  try {
+    const { headers, rows: body } = parseText(text);
+
+    // A column counts as numeric when at least 80% of its filled cells are numbers
+    columns = headers.map((name, index) => {
+      const values = body.map(row => row[index]).filter(v => v !== '');
+      const numericCount = values.filter(v => !isNaN(toNumber(v))).length;
+      return { name, index, isNumeric: values.length > 0 && numericCount / values.length >= 0.8 };
+    });
+    rows = body;
+
+    if (!columns.some(c => c.isNumeric)) {
+      throw new Error('No numeric columns found. Add at least one column of numbers.');
+    }
+    setupControls();
+    showMessage(`Loaded ${rows.length} rows and ${columns.length} columns.`);
+  } catch (err) {
+    showMessage('Could not read that data: ' + err.message, true);
+  }
+}
+
+// Fill the dropdowns and pick sensible defaults for the new data
+function setupControls() {
+  $('opts').hidden = false;
+
+  // X axis: default to the first text column (or the first column if all are numbers)
+  const defaultX = columns.find(c => !c.isNumeric) || columns[0];
+  $('xcol').innerHTML = columns
+    .map(c => `<option value="${c.index}">${escapeHtml(c.name)}</option>`).join('');
+  $('xcol').value = defaultX.index;
+  renderYChoices();
+
+  // Exactly two numeric columns and nothing else -> a scatter plot makes sense
+  const onlyTwoNumbers = columns.length === 2 && columns.every(c => c.isNumeric);
+  $('type').value = onlyTwoNumbers ? 'scatter' : 'bar';
+  if (onlyTwoNumbers) { $('xcol').value = columns[0].index; renderYChoices(); }
+
+  render();
+}
+
+// Build the pill checkboxes for value columns (every numeric column except X)
+function renderYChoices() {
+  const x = +$('xcol').value;
+  const previous = [...document.querySelectorAll('#ycols input:checked')].map(i => +i.value);
+  const candidates = columns.filter(c => c.isNumeric && c.index !== x);
+
+  // Keep the user's earlier picks if still valid, otherwise tick the first three
+  const selected = previous.length
+    ? previous.filter(p => candidates.some(c => c.index === p))
+    : candidates.slice(0, 3).map(c => c.index);
+
+  $('ycols').innerHTML = candidates.map(c =>
+    `<label><input type="checkbox" value="${c.index}" ${selected.includes(c.index) ? 'checked' : ''}>${escapeHtml(c.name)}</label>`
+  ).join('') || '<span style="color:var(--muted);font-size:13px">No other numeric columns.</span>';
+}
+
+
+/* ---------- 6. Settings ---------- */
+
+// Collect every control's current value into one object
+function getSettings() {
+  return {
+    type:        $('type').value,
+    xIndex:      +$('xcol').value,
+    yIndexes:    [...document.querySelectorAll('#ycols input:checked')].map(i => +i.value),
+    aggregate:   $('agg').value,
+    sort:        $('sort').value,
+    limit:       +$('top').value,
+    title:       $('title').value,
+    stacked:     $('stacked').checked,
+    horizontal:  $('horiz').checked,
+    startAtZero: $('zero').checked
+  };
+}
+
+
+/* ---------- 7. Data prep ---------- */
+
+// Scatter plots use raw (x, y) points – no grouping
+function buildScatterData(s) {
+  const points = rows
+    .map(r => ({ x: toNumber(r[s.xIndex]), y: toNumber(r[s.yIndexes[0]]) }))
+    .filter(p => !isNaN(p.x) && !isNaN(p.y));
+  return { isScatter: true, points, xName: columns[s.xIndex].name, yName: columns[s.yIndexes[0]].name };
+}
+
+// Group rows that share the same X value (or keep every row separate)
+function groupRows(xIndex, aggregate) {
+  if (aggregate === 'none') return rows.map(r => ({ label: r[xIndex], rows: [r] }));
+
+  const groups = new Map();
+  rows.forEach(r => {
+    if (!groups.has(r[xIndex])) groups.set(r[xIndex], []);
+    groups.get(r[xIndex]).push(r);
+  });
+  return [...groups].map(([label, groupRows]) => ({ label, rows: groupRows }));
+}
+
+// Combine one column of a group into a single number (sum, average, ...)
+function aggregateColumn(group, colIndex, aggregate) {
+  if (aggregate === 'count') return group.rows.length;
+
+  const nums = group.rows.map(r => toNumber(r[colIndex])).filter(n => !isNaN(n));
+  if (!nums.length) return null;
+
+  switch (aggregate) {
+    case 'avg': return nums.reduce((a, b) => a + b, 0) / nums.length;
+    case 'min': return Math.min(...nums);
+    case 'max': return Math.max(...nums);
+    default:    return nums.reduce((a, b) => a + b, 0);   // 'sum' and 'none'
+  }
+}
+
+// Bar / line / pie / radar data: labels plus one series per chosen column
+function buildCategoryData(s) {
+  let items = groupRows(s.xIndex, s.aggregate).map(group => ({
+    label: group.label,
+    values: s.yIndexes.map(col => aggregateColumn(group, col, s.aggregate))
+  }));
+
+  // Sorting (by label, or by the first selected column)
+  if (s.sort === 'x')    items.sort((a, b) => String(a.label).localeCompare(String(b.label), undefined, { numeric: true }));
+  if (s.sort === 'desc') items.sort((a, b) => (b.values[0] ?? -Infinity) - (a.values[0] ?? -Infinity));
+  if (s.sort === 'asc')  items.sort((a, b) => (a.values[0] ?? Infinity) - (b.values[0] ?? Infinity));
+
+  if (s.limit > 0) items = items.slice(0, s.limit);
+
+  return {
+    labels: items.map(i => i.label),
+    series: s.yIndexes.map((col, n) => ({ name: columns[col].name, data: items.map(i => i.values[n]) })),
+    xName: columns[s.xIndex].name
+  };
+}
+
+
+/* ---------- 8. Drawing ---------- */
+
+// Turn prepared data + settings into a Chart.js configuration object
+function makeChartConfig(data, s) {
+  const gridColor = cssVar('--line');
+  const isRadial = s.type === 'pie' || s.type === 'doughnut';
+
+  let config;
+
+  if (data.isScatter) {
+    config = {
+      type: 'scatter',
+      data: { datasets: [{ label: `${data.yName} vs ${data.xName}`, data: data.points, backgroundColor: PALETTE[0], pointRadius: 5 }] },
+      options: { scales: {
+        x: { title: { display: true, text: data.xName }, grid: { color: gridColor } },
+        y: { title: { display: true, text: data.yName }, grid: { color: gridColor }, beginAtZero: s.startAtZero }
+      } }
+    };
+
+  } else if (isRadial) {
+    // Pie / doughnut: one slice per label, using the first selected column
+    config = {
+      type: s.type,
+      data: { labels: data.labels, datasets: [{
+        label: data.series[0].name,
+        data: data.series[0].data,
+        backgroundColor: data.labels.map((_, i) => PALETTE[i % PALETTE.length]),
+        borderColor: cssVar('--solid'),
+        borderWidth: 2
+      }] },
+      options: {}
+    };
+
+  } else {
+    // Bar, line, area and radar: one dataset per selected column
+    const isArea = s.type === 'area';
+    config = {
+      type: isArea ? 'line' : s.type,            // "area" is a filled line chart
+      data: { labels: data.labels, datasets: data.series.map((series, i) => {
+        const color = PALETTE[i % PALETTE.length];
+        return {
+          label: series.name,
+          data: series.data,
+          backgroundColor: color + (isArea ? '55' : 'dd'),   // add transparency
+          borderColor: color,
+          borderWidth: 2,
+          fill: isArea,
+          tension: 0.4,                                       // smooth lines
+          pointRadius: data.labels.length > 40 ? 0 : 4,
+          pointBackgroundColor: color,
+          borderRadius: s.type === 'bar' ? 8 : 0,
+          borderSkipped: false
+        };
+      }) },
+      options: {
+        indexAxis: s.horizontal && s.type === 'bar' ? 'y' : 'x',
+        scales: s.type === 'radar'
+          ? { r: { grid: { color: gridColor }, angleLines: { color: gridColor }, beginAtZero: true } }
+          : {
+              x: { stacked: s.stacked, grid: { color: gridColor }, title: { display: true, text: data.xName } },
+              y: { stacked: s.stacked, grid: { color: gridColor }, beginAtZero: s.startAtZero }
+            }
+      }
+    };
+  }
+
+  // Options shared by every chart type
+  const showLegend = !data.isScatter && (isRadial || data.series.length > 1 || s.type === 'radar');
+  config.options = {
+    ...config.options,
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 350 },
+    plugins: {
+      title:  { display: !!s.title, text: s.title, color: cssVar('--ink'), font: { size: 16, weight: '600' } },
+      legend: { display: showLegend, position: 'bottom', labels: { color: cssVar('--ink') } }
+    }
+  };
+  return config;
+}
+
+// Highlight the active chart-type button
+function syncTypeButtons() {
+  document.querySelectorAll('#seg button').forEach(btn =>
+    btn.classList.toggle('on', btn.dataset.type === $('type').value));
+}
+
+// Main function: re-draw everything from the current settings
+function render() {
+  if (!columns.length) return;                 // nothing loaded yet
+
+  syncTypeButtons();
+  drawTable();
+
+  if (chart) { chart.destroy(); chart = null; }
+
+  const settings = getSettings();
+  if (!settings.yIndexes.length) {             // no value column ticked
+    $('cv').hidden = true;
+    $('ph').hidden = false;
+    $('ph').textContent = 'Choose at least one numeric column.';
+    $('statsec').hidden = true;
+    return;
+  }
+
+  const data = settings.type === 'scatter' ? buildScatterData(settings) : buildCategoryData(settings);
+
+  $('cv').hidden = false;
+  $('ph').hidden = true;
+
+  // Match chart text to the page theme
+  Chart.defaults.color = cssVar('--muted');
+  Chart.defaults.font.family = '"DM Sans", system-ui, sans-serif';
+
+  chart = new Chart($('cv'), makeChartConfig(data, settings));
+  drawStats(data);
+}
+
+
+/* ---------- 9. Summary and data preview ---------- */
+
+// Count / total / mean / min / max for each plotted column
+function drawStats(data) {
+  const list = data.isScatter ? [{ name: data.yName, data: data.points.map(p => p.y) }] : data.series;
+
+  const bodyRows = list.map(series => {
+    const values = series.data.filter(n => n != null && !isNaN(n));
+    const total = values.reduce((a, b) => a + b, 0);
+    return `<tr>
+      <td>${escapeHtml(series.name)}</td>
+      <td class="n">${values.length}</td>
+      <td class="n">${formatNumber(total)}</td>
+      <td class="n">${formatNumber(values.length ? total / values.length : NaN)}</td>
+      <td class="n">${formatNumber(Math.min(...values))}</td>
+      <td class="n">${formatNumber(Math.max(...values))}</td>
+    </tr>`;
+  }).join('');
+
+  $('stats').innerHTML =
+    '<table><tr><th>Column</th><th>Points</th><th>Total</th><th>Mean</th><th>Min</th><th>Max</th></tr>' +
+    bodyRows + '</table>';
+  $('statsec').hidden = false;
+}
+
+// Show up to the first 100 rows of the loaded data
+function drawTable() {
+  const shown = Math.min(rows.length, 100);
+  $('tabh').textContent = `Data (${shown === rows.length ? rows.length : 'first ' + shown + ' of ' + rows.length} rows)`;
+
+  const header = '<tr>' + columns.map(c => `<th>${escapeHtml(c.name)}</th>`).join('') + '</tr>';
+  const body = rows.slice(0, shown).map(row =>
+    '<tr>' + row.map((v, i) => `<td class="${columns[i].isNumeric ? 'n' : ''}">${escapeHtml(v)}</td>`).join('') + '</tr>'
+  ).join('');
+
+  $('tab').innerHTML = '<table>' + header + body + '</table>';
+  $('tabsec').hidden = false;
+}
+
+
+/* ---------- 10. Events ---------- */
+
+// Create the chart-type buttons and make them switch the hidden <select>
+$('seg').innerHTML = CHART_TYPES
+  .map(([value, label]) => `<button type="button" data-type="${value}">${label}</button>`).join('');
+$('seg').onclick = e => {
+  const type = e.target.dataset.type;
+  if (type) { $('type').value = type; render(); }
+};
+
+// "Build chart" button
+$('load').onclick = () => loadData($('raw').value);
+
+// "Try a sample" menu
+$('sample').onchange = e => {
+  const name = e.target.value;
+  if (!SAMPLES[name]) return;
+  $('raw').value = SAMPLES[name];
+  loadData(SAMPLES[name]);
+  if (SAMPLE_CHART_TYPE[name]) $('type').value = SAMPLE_CHART_TYPE[name];
+  render();
+  e.target.value = '';                         // reset the menu label
+};
+
+// "Open file" – read the chosen file as text
+$('file').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { $('raw').value = reader.result; loadData(reader.result); };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+// Changing the X column also changes which value columns are available
+$('xcol').onchange = () => { renderYChoices(); render(); };
+
+// Any other setting simply re-draws the chart
+['type', 'agg', 'sort', 'top', 'title', 'stacked', 'horiz', 'zero']
+  .forEach(id => $(id).addEventListener('input', render));
+$('ycols').addEventListener('change', render);
+
+// Re-draw when the device switches between light and dark mode
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+
+  </script>
 </body>
 </html>
