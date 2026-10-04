@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plotline – raw data to charts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f4f5ff;--solid:#fff;--panel:rgba(255,255,255,.72);--ink:#14142b;--muted:#6a6a8a;--line:rgba(99,102,241,.16);--field:rgba(99,102,241,.07);--accent:#5b5bf0;--accent2:#06b6d4;--aur1:rgba(99,102,241,.24);--aur2:rgba(6,182,212,.2);--shadow:0 12px 40px -14px rgba(60,60,160,.3);--err:#dc2626;--g:linear-gradient(135deg,#5b5bf0,#0891b2);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#09091a;--solid:#14142e;--panel:rgba(255,255,255,.05);--ink:#ecebff;--muted:#9a9abf;--line:rgba(255,255,255,.1);--field:rgba(255,255,255,.06);--accent:#8b8bff;--aur1:rgba(99,102,241,.35);--aur2:rgba(34,211,238,.18);--shadow:0 20px 60px -20px rgba(0,0,0,.7);--err:#f87171}}
+:root[data-theme="dark"]{--bg:#09091a;--solid:#14142e;--panel:rgba(255,255,255,.05);--ink:#ecebff;--muted:#9a9abf;--line:rgba(255,255,255,.1);--field:rgba(255,255,255,.06);--accent:#8b8bff;--aur1:rgba(99,102,241,.35);--aur2:rgba(34,211,238,.18);--shadow:0 20px 60px -20px rgba(0,0,0,.7);--err:#f87171}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;color:var(--ink);font:15px/1.55 "DM Sans",system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(900px 520px at 8% -8%,var(--aur1),transparent 70%),radial-gradient(800px 480px at 100% 0%,var(--aur2),transparent 70%),var(--bg);background-attachment:fixed;min-height:100vh}
+header{display:flex;align-items:center;gap:20px;padding:44px clamp(16px,4vw,48px) 12px;flex-wrap:wrap}
+.logo{width:68px;height:68px;border-radius:20px;background:var(--g);display:grid;place-items:center;box-shadow:0 14px 34px -10px #5b5bf0}
+h1{font:800 clamp(40px,7vw,76px)/.95 Sora,"DM Sans",sans-serif;letter-spacing:-.04em;margin:0;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:6px}
+header p{margin:10px 0 0;color:var(--muted);max-width:52ch;font-size:16px}
+main{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:20px;padding:20px clamp(16px,4vw,48px) 56px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}header{padding-top:28px}.logo{width:52px;height:52px;border-radius:16px}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px;min-width:0;box-shadow:var(--shadow);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+h2{font:700 16px Sora,"DM Sans",sans-serif;margin:0 0 14px;display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
+h2::before{content:"";width:6px;height:18px;border-radius:4px;background:var(--g)}
+label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:16px 0 6px}
+textarea,select,input[type=text],input[type=number]{width:100%;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;transition:border-color .15s,box-shadow .15s}
+textarea:focus,select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--field);outline:none}
+select{color-scheme:light dark}
+textarea{min-height:150px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+button:focus-visible,.btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
+button,.btn{background:var(--g);color:#fff;border:0;border-radius:12px;padding:11px 18px;font:600 14px/1 "DM Sans",sans-serif;cursor:pointer;box-shadow:0 10px 24px -10px #5b5bf0;transition:transform .12s,box-shadow .12s}
+button:hover,.btn:hover{transform:translateY(-1px)}
+button.ghost,.btn.ghost{background:var(--field);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn input{display:none}
+.row select{padding:10px 12px;border-radius:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:flex;flex-wrap:wrap;gap:4px;background:var(--field);border:1px solid var(--line);border-radius:14px;padding:4px}
+.seg button{background:transparent;color:var(--muted);box-shadow:none;padding:8px 12px;border-radius:10px;font-size:13px;flex:1 1 auto}
+.seg button:hover{transform:none;color:var(--ink)}
+.seg button.on{background:var(--g);color:#fff;box-shadow:0 6px 16px -6px #5b5bf0}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.checks label{display:inline-flex;align-items:center;gap:8px;margin:0;padding:6px 14px;border:1px solid var(--line);border-radius:99px;color:var(--ink);cursor:pointer;font-size:13px;background:var(--field)}
+.checks label:has(input:checked){border-color:var(--accent);background:var(--solid)}
+.checks input{accent-color:var(--accent)}
+#msg{margin-top:12px;font-size:13px;min-height:18px;color:var(--muted)}
+#msg.err{color:var(--err)}
+.chartbox{position:relative;height:min(64vh,480px);min-height:320px}
+.stats,.tablewrap{overflow-x:auto}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+th,td{padding:9px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-weight:600;color:var(--muted);position:sticky;top:0;background:var(--solid);font-size:12px}
+tr:nth-child(even) td{background:var(--field)}
+td.n{font-variant-numeric:tabular-nums}
+.stack{display:grid;gap:20px;min-width:0}
+.empty{display:grid;place-items:center;height:100%;color:var(--muted);text-align:center;border:2px dashed var(--line);border-radius:16px;padding:20px}
+.tablewrap{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:14px}
+</style>
+</head>
+<body>
+<header>
+<div class="logo" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 36 36" fill="#fff"><rect x="4" y="19" width="7" height="13" rx="3.5" opacity=".7"/><rect x="14.5" y="10" width="7" height="22" rx="3.5"/><rect x="25" y="3" width="7" height="29" rx="3.5" opacity=".85"/></svg></div>
+<div><h1>DatainStyle</h1>
+<p>Turn raw rows into clear, beautiful charts. Paste a table or drop in a file, pick your columns, done.</p></div>
+</header>
+<main>
+<div class="stack">
+<section>
+<h2>1. Your data</h2>
+<textarea id="raw" spellcheck="false" placeholder="Paste CSV, TSV or JSON here"></textarea>
+<div class="row">
+<button id="load">Build chart</button>
+<label class="btn ghost" style="margin:0;color:var(--ink)">Open file<input type="file" id="file" accept=".csv,.tsv,.txt,.json"></label>
+<select id="sample" aria-label="Sample data" style="width:auto"><option value="">Try a sample</option><option value="sales">Monthly sales</option><option value="scores">Exam scores</option><option value="temps">City temperatures</option><option value="scatter">Height vs weight</option></select>
+</div>
+<div id="msg" role="status"></div>
+</section>
+<section id="opts" hidden>
+<h2>2. Shape the chart</h2>
+<div class="grid2">
+<div style="grid-column:1/-1"><label>Chart type</label><div class="seg" id="seg"></div><select id="type" hidden><option value="bar">Bar</option><option value="line">Line</option><option value="area">Area</option><option value="pie">Pie</option><option value="doughnut">Doughnut</option><option value="radar">Radar</option><option value="scatter">Scatter</option></select></div>
+<div style="grid-column:1/-1"><label for="xcol">X axis / labels</label><select id="xcol"></select></div>
+</div>
+<label>Values (numeric columns)</label>
+<div class="checks" id="ycols"></div>
+<div class="grid2">
+<div><label for="agg">Combine repeated X</label><select id="agg"><option value="sum">Sum</option><option value="avg">Average</option><option value="count">Count</option><option value="min">Min</option><option value="max">Max</option><option value="none">Keep every row</option></select></div>
+<div><label for="sort">Sort</label><select id="sort"><option value="none">As in data</option><option value="x">By X</option><option value="desc">Largest first</option><option value="asc">Smallest first</option></select></div>
+</div>
+<div class="grid2">
+<div><label for="top">Show first N (0 = all)</label><input type="number" id="top" min="0" value="0"></div>
+<div><label for="title">Chart title</label><input type="text" id="title" placeholder="Optional"></div>
+</div>
+<div class="checks" style="margin-top:12px"><label><input type="checkbox" id="stacked"> Stacked</label><label><input type="checkbox" id="horiz"> Horizontal bars</label><label><input type="checkbox" id="zero" checked> Start Y at zero</label></div>
+</section>
+</div>
+<div class="stack">
+<section><div class="chartbox"><div class="empty" id="ph">Your chart will appear here.<br>Load a sample to see how it works.</div><canvas id="cv" hidden></canvas></div></section>
+<section id="statsec" hidden><h2>Summary</h2><div class="stats" id="stats"></div></section>
+<section id="tabsec" hidden><h2 id="tabh">Data</h2><div class="tablewrap" id="tab"></div></section>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const PAL=['#6366f1','#06b6d4','#f472b6','#f59e0b','#10b981','#a78bfa','#fb7185','#38bdf8','#84cc16','#f97316'];
+const SAMPLES={
+sales:"Month,Revenue,Costs,Region\nJan,12400,8200,North\nFeb,13800,8600,North\nMar,15100,9100,North\nApr,14200,9000,South\nMay,16900,9800,South\nJun,18300,10400,South\nJul,17600,10100,East\nAug,19800,11200,East\nSep,21000,11900,East\nOct,20400,11500,West\nNov,23100,12800,West\nDec,26500,14200,West",
+scores:"Subject,Class A,Class B,Class C\nMath,72,65,80\nScience,81,74,77\nEnglish,68,79,70\nHistory,75,70,66\nArt,88,84,90\nMusic,79,86,73",
+temps:"City,Jan,Jul,Rainfall_mm\nBengaluru,21,24,970\nMumbai,24,27,2400\nDelhi,14,33,790\nChennai,25,33,1400\nKolkata,20,30,1800\nShimla,5,20,1500",
+scatter:"Height_cm,Weight_kg\n150,48\n155,52\n158,55\n162,58\n165,63\n168,62\n170,68\n173,70\n176,75\n180,79\n183,84\n188,90"};
+let cols=[],rows=[],chart=null;
+const TYPES=[['bar','Bar'],['line','Line'],['area','Area'],['pie','Pie'],['doughnut','Donut'],['radar','Radar'],['scatter','Scatter']];
+$('seg').innerHTML=TYPES.map(t=>`<button type="button" data-t="${t[0]}">${t[1]}</button>`).join('');
+function syncSeg(){document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===$('type').value))}
+$('seg').onclick=e=>{const t=e.target.dataset.t;if(t){$('type').value=t;render()}};
+
+function splitLine(line,d){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];
+ if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+ else if(c==='"')q=true;else if(c===d){out.push(cur);cur=''}else cur+=c}
+ out.push(cur);return out.map(s=>s.trim())}
+function parse(text){
+ text=text.trim();if(!text)throw new Error('Paste some data first.');
+ if(text[0]==='['||text[0]==='{'){let j=JSON.parse(text);
+  if(!Array.isArray(j)){const k=Object.keys(j);
+   if(k.every(x=>Array.isArray(j[x]))){const n=Math.max(...k.map(x=>j[x].length));j=Array.from({length:n},(_,i)=>Object.fromEntries(k.map(x=>[x,j[x][i]])))}
+   else j=Object.entries(j).map(([k,v])=>typeof v==='object'?{key:k,...v}:{key:k,value:v})}
+  if(!j.length||typeof j[0]!=='object')throw new Error('JSON must be an array of objects.');
+  const h=[...new Set(j.flatMap(o=>Object.keys(o)))];
+  return {h,r:j.map(o=>h.map(k=>o[k]==null?'':String(o[k])))}}
+ const lines=text.split(/\r?\n/).filter(l=>l.trim());
+ const first=lines[0];const d=[',','\t',';','|'].map(c=>[c,first.split(c).length]).sort((a,b)=>b[1]-a[1])[0][0];
+ const h=splitLine(first,d).map((s,i)=>s||('Column '+(i+1)));
+ const r=lines.slice(1).map(l=>splitLine(l,d)).map(a=>h.map((_,i)=>a[i]??''));
+ if(!r.length)throw new Error('Found headers but no data rows.');
+ return {h,r}}
+const num=s=>{if(typeof s==='number')return s;const t=String(s).replace(/[,\s$€£₹%]/g,'');return t!==''&&!isNaN(t)?parseFloat(t):NaN};
+
+function load(text){
+ const m=$('msg');m.className='';
+ try{const {h,r}=parse(text);
+  cols=h.map((name,i)=>{const vals=r.map(x=>x[i]).filter(v=>v!=='');const nn=vals.filter(v=>!isNaN(num(v))).length;return{name,i,numeric:vals.length>0&&nn/vals.length>=.8}});
+  rows=r;
+  if(!cols.some(c=>c.numeric))throw new Error('No numeric columns found. Add at least one column of numbers.');
+  setup();m.textContent=`Loaded ${rows.length} rows and ${cols.length} columns.`;
+ }catch(e){m.className='err';m.textContent='Could not read that data: '+e.message}}
+
+function setup(){
+ $('opts').hidden=false;
+ const firstText=cols.find(c=>!c.numeric)||cols[0];
+ $('xcol').innerHTML=cols.map(c=>`<option value="${c.i}">${esc(c.name)}</option>`).join('');
+ $('xcol').value=firstText.i;
+ drawChecks();
+ const sc=cols.filter(c=>c.numeric).length===2&&!cols.some(c=>!c.numeric);
+ $('type').value=sc?'scatter':'bar';
+ if(sc)$('xcol').value=cols[0].i,drawChecks();
+ render()}
+function drawChecks(){
+ const x=+$('xcol').value,prev=[...document.querySelectorAll('#ycols input:checked')].map(i=>+i.value);
+ const cand=cols.filter(c=>c.numeric&&c.i!==x);
+ const sel=prev.length?prev.filter(p=>cand.some(c=>c.i===p)):cand.slice(0,3).map(c=>c.i);
+ $('ycols').innerHTML=cand.map(c=>`<label><input type="checkbox" value="${c.i}" ${sel.includes(c.i)?'checked':''}>${esc(c.name)}</label>`).join('')||'<span style="color:var(--muted);font-size:13px">No other numeric columns.</span>'}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function build(){
+ const x=+$('xcol').value,ys=[...document.querySelectorAll('#ycols input:checked')].map(i=>+i.value);
+ const type=$('type').value,agg=type==='scatter'?'none':$('agg').value;
+ if(!ys.length)return null;
+ let labels,series;
+ if(type==='scatter'){
+  const pts=rows.map(r=>({x:num(r[x]),y:num(r[ys[0]])})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+  return{scatter:true,pts,xn:cols[x].name,yn:cols[ys[0]].name}}
+ let groups;
+ if(agg==='none'){labels=rows.map(r=>r[x]);groups=rows.map((r,k)=>({k:r[x],rows:[r]}))}
+ else{const mp=new Map();rows.forEach(r=>{const k=r[x];if(!mp.has(k))mp.set(k,[]);mp.get(k).push(r)});groups=[...mp].map(([k,rs])=>({k,rows:rs}))}
+ const val=(g,c)=>{const v=g.rows.map(r=>num(r[c])).filter(n=>!isNaN(n));
+  if(agg==='count')return g.rows.length;if(!v.length)return null;
+  if(agg==='avg')return v.reduce((a,b)=>a+b,0)/v.length;
+  if(agg==='min')return Math.min(...v);if(agg==='max')return Math.max(...v);return v.reduce((a,b)=>a+b,0)}
+ let data=groups.map(g=>({k:g.k,v:ys.map(c=>val(g,c))}));
+ const s=$('sort').value;
+ if(s==='x')data.sort((a,b)=>String(a.k).localeCompare(String(b.k),undefined,{numeric:true}));
+ if(s==='desc')data.sort((a,b)=>(b.v[0]??-Infinity)-(a.v[0]??-Infinity));
+ if(s==='asc')data.sort((a,b)=>(a.v[0]??Infinity)-(b.v[0]??Infinity));
+ const n=+$('top').value;if(n>0)data=data.slice(0,n);
+ return{labels:data.map(d=>d.k),series:ys.map((c,j)=>({name:cols[c].name,data:data.map(d=>d.v[j])})),xn:cols[x].name,agg}}
+
+function render(){
+ if(!cols.length)return;
+ syncSeg();drawTable();
+ const b=build();if(chart){chart.destroy();chart=null}
+ if(!b){$('cv').hidden=true;$('ph').hidden=false;$('ph').textContent='Choose at least one numeric column.';$('statsec').hidden=true;return}
+ $('cv').hidden=false;$('ph').hidden=true;
+ const type=$('type').value,ink=css('--ink'),muted=css('--muted'),line=css('--line');
+ Chart.defaults.color=muted;Chart.defaults.font.family='"DM Sans",system-ui,sans-serif';
+ const radial=type==='pie'||type==='doughnut';
+ let cfg;
+ if(b.scatter){
+  cfg={type:'scatter',data:{datasets:[{label:`${b.yn} vs ${b.xn}`,data:b.pts,backgroundColor:PAL[0],pointRadius:5}]},
+   options:{scales:{x:{title:{display:true,text:b.xn},grid:{color:line}},y:{title:{display:true,text:b.yn},grid:{color:line},beginAtZero:$('zero').checked}}}}
+ }else if(radial){
+  const d=b.series[0];
+  cfg={type,data:{labels:b.labels,datasets:[{label:d.name,data:d.data,backgroundColor:b.labels.map((_,i)=>PAL[i%PAL.length]),borderColor:css('--solid'),borderWidth:2}]},options:{}}
+ }else{
+  const area=type==='area',st=$('stacked').checked,h=$('horiz').checked&&type==='bar';
+  cfg={type:area?'line':type,data:{labels:b.labels,datasets:b.series.map((s,i)=>({label:s.name,data:s.data,backgroundColor:PAL[i%PAL.length]+(area?'55':'dd'),borderColor:PAL[i%PAL.length],borderWidth:2,fill:area,tension:.4,pointRadius:b.labels.length>40?0:4,pointBackgroundColor:PAL[i%PAL.length],borderRadius:type==='bar'?8:0,borderSkipped:false}))},
+   options:{indexAxis:h?'y':'x',scales:type==='radar'?{r:{grid:{color:line},angleLines:{color:line},beginAtZero:true}}:
+    {x:{stacked:st,grid:{color:line},title:{display:true,text:b.xn}},y:{stacked:st,grid:{color:line},beginAtZero:$('zero').checked}}}}
+ }
+ cfg.options={...cfg.options,responsive:true,maintainAspectRatio:false,animation:{duration:350},
+  plugins:{title:{display:!!$('title').value,text:$('title').value,color:ink,font:{size:16,weight:'600'}},legend:{display:!b.scatter&&(radial||b.series.length>1||type==='radar'),position:'bottom',labels:{color:ink}}}};
+ chart=new Chart($('cv'),cfg);
+ drawStats(b)}
+
+function drawStats(b){
+ const list=b.scatter?[{name:b.yn,data:b.pts.map(p=>p.y)}]:b.series;
+ const f=n=>n==null||isNaN(n)?'–':Math.abs(n)>=1000?n.toLocaleString(undefined,{maximumFractionDigits:0}):(+n.toFixed(2)).toString();
+ $('stats').innerHTML='<table><tr><th>Column</th><th>Points</th><th>Total</th><th>Mean</th><th>Min</th><th>Max</th></tr>'+list.map(s=>{
+  const v=s.data.filter(n=>n!=null&&!isNaN(n)),t=v.reduce((a,c)=>a+c,0);
+  return`<tr><td>${esc(s.name)}</td><td class="n">${v.length}</td><td class="n">${f(t)}</td><td class="n">${f(v.length?t/v.length:NaN)}</td><td class="n">${f(Math.min(...v))}</td><td class="n">${f(Math.max(...v))}</td></tr>`}).join('')+'</table>';
+ $('statsec').hidden=false}
+function drawTable(){
+ const n=Math.min(rows.length,100);
+ $('tabh').textContent=`Data (${n===rows.length?rows.length:'first '+n+' of '+rows.length} rows)`;
+ $('tab').innerHTML='<table><tr>'+cols.map(c=>`<th>${esc(c.name)}</th>`).join('')+'</tr>'+rows.slice(0,n).map(r=>'<tr>'+r.map((v,i)=>`<td class="${cols[i].numeric?'n':''}">${esc(v)}</td>`).join('')+'</tr>').join('')+'</table>';
+ $('tabsec').hidden=false}
+
+$('load').onclick=()=>load($('raw').value);
+$('sample').onchange=e=>{const s=SAMPLES[e.target.value];if(!s)return;$('raw').value=s;load(s);
+ if(e.target.value==='temps')$('type').value='bar';if(e.target.value==='scores')$('type').value='radar';render();e.target.value=''};
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('raw').value=r.result;load(r.result)};r.readAsText(f);e.target.value=''};
+$('xcol').onchange=()=>{drawChecks();render()};
+['type','agg','sort','top','title','stacked','horiz','zero'].forEach(id=>$(id).addEventListener('input',render));
+$('ycols').addEventListener('change',render);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+</script>
+</body>
+</html>
